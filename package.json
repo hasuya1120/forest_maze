@@ -25,5 +25,8 @@
   "bugs": {
     "url": "https://github.com/hasuya1120/forest_maze/issues"
   },
-  "homepage": "https://github.com/hasuya1120/forest_maze#readme"
+  "homepage": "https://github.com/hasuya1120/forest_maze#readme",
+  "devDependencies": {
+    "elm-hot": "^1.1.4"
+  }
 }
