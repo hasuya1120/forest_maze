@@ -66,7 +66,7 @@ init =
             initializeCandinate newBoard
     in
     ( Model newBoard [] candinates 40
-    , Random.generate ShuffleCandinate (shuffleCandinate candinates)
+    , Random.generate ChooseCandinate (chooseCandinate candinates)
     )
 
 
@@ -103,11 +103,6 @@ isPerimeter maxOfCoordinate x y =
     x == 0 || y == 0 || x == maxOfCoordinate || y == maxOfCoordinate
 
 
-shuffleCandinate : Candinates -> Generator Candinates
-shuffleCandinate candinate =
-    Random.List.shuffle candinate
-
-
 isOdd : Point -> Bool
 isOdd point =
     let
@@ -120,6 +115,11 @@ isOdd point =
 initializeCandinate : Board -> Candinates
 initializeCandinate board =
     List.filter (\p -> isOdd p) board
+
+
+chooseCandinate : Candinates -> Generator ( Maybe Point, List Point )
+chooseCandinate candinate =
+    Random.List.choose candinate
 
 
 chooseDirection : Generator Direction
@@ -137,7 +137,7 @@ chooseDirections maxOfCoordinate =
 
 
 type Msg
-    = ShuffleCandinate Candinates
+    = ChooseCandinate ( Maybe Point, List Point )
     | ChooseDirections (List Direction)
     | GeneratingMaze
     | FinishedGeneratingMaze
@@ -146,8 +146,13 @@ type Msg
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        ShuffleCandinate candinates ->
-            ( { model | candinates = candinates }
+        ChooseCandinate ( Just candinate, _ ) ->
+            ( { model | candinates = [ candinate ] }
+            , Random.generate ChooseDirections (chooseDirections model.maxOfCoordinate)
+            )
+
+        ChooseCandinate ( Nothing, _ ) ->
+            ( { model | candinates = [] }
             , Random.generate ChooseDirections (chooseDirections model.maxOfCoordinate)
             )
 
@@ -220,9 +225,8 @@ generateMaze model =
                 Just board ->
                     let
                         nextCandinates =
-                            Maybe.withDefault point (ListE.find (\p -> p.coordinate == c2) model.candinates)
-                                |> (\p -> ( p, ListE.remove p model.candinates ))
-                                |> (\( p, ps ) -> p :: ps)
+                            Maybe.withDefault point (ListE.find (\p -> p.coordinate == c2) model.board)
+                                |> (\p -> p :: model.candinates)
                     in
                     generateMaze { model | board = board, candinates = nextCandinates, directions = newDirections }
 
