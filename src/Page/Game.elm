@@ -3,15 +3,18 @@ module Page.Game exposing (Model, Msg, init, subscriptions, update, view)
 -- Write the end condition for maze generation
 
 import Html exposing (..)
+import Html.Attributes exposing (..)
 import List.Extra as ListE
 import Random exposing (Generator)
 import Random.List
+import Url exposing (toString)
 
 
 type alias Model =
     { board : Board
-    , pointToDig : Coordinate
-    , directionToDig : Direction
+    , directions : List Direction
+    , candinates : Candinates
+    , maxOfCoordinate : Int
     }
 
 
@@ -19,9 +22,14 @@ type alias Board =
     List Point
 
 
+type alias Candinates =
+    List Point
+
+
 type alias Point =
     { coordinate : Coordinate
     , pointStatus : PointStatus
+    , possibleDirections : List Direction
     }
 
 
@@ -36,20 +44,29 @@ type PointStatus
     | Road
 
 
+type Direction
+    = UP
+    | DOWN
+    | RIGHT
+    | LEFT
+
+
+allDirections : List Direction
+allDirections =
+    [ UP, DOWN, RIGHT, LEFT ]
+
+
 init : ( Model, Cmd Msg )
 init =
     let
         newBoard =
-            initializeBoard 8
+            initializeBoard 40
 
-        initialCoordinate =
-            newBoard
-                |> List.head
-                |> Maybe.andThen (\p -> Just (Coordinate p.coordinate.x p.coordinate.y))
-                |> Maybe.withDefault (Coordinate 0 0)
+        candinates =
+            initializeCandinate newBoard
     in
-    ( Model newBoard initialCoordinate UP
-    , Random.generate ChoosePoint (choosePoint newBoard)
+    ( Model newBoard [] candinates 40
+    , Random.generate ShuffleCandinate (shuffleCandinate candinates)
     )
 
 
@@ -58,36 +75,37 @@ init =
 
 
 initializeBoard : Int -> Board
-initializeBoard numOfPoint =
-    numOfPoint
+initializeBoard maxOfCoordinate =
+    maxOfCoordinate
         |> List.range 0
-        |> initializePoints numOfPoint
+        |> initializePoints maxOfCoordinate
 
 
 initializePoints : Int -> List Int -> Board
-initializePoints numOfPoint width =
-    ListE.lift2 (initializePoint numOfPoint) width width
+initializePoints maxOfCoordinate width =
+    ListE.lift2 (initializePoint maxOfCoordinate) width width
 
 
 initializePoint : Int -> Int -> Int -> Point
-initializePoint numOfPoint x y =
+initializePoint maxOfCoordinate y x =
     Point (Coordinate x y)
-        (if isPerimeter numOfPoint x y then
+        (if isPerimeter maxOfCoordinate x y then
             Road
 
          else
             Wall
         )
+        allDirections
 
 
 isPerimeter : Int -> Int -> Int -> Bool
-isPerimeter numOfPoint x y =
-    x == 0 || y == 0 || x == numOfPoint || y == numOfPoint
+isPerimeter maxOfCoordinate x y =
+    x == 0 || y == 0 || x == maxOfCoordinate || y == maxOfCoordinate
 
 
-choosePoint : Board -> Generator ( Maybe Point, List Point )
-choosePoint board =
-    Random.List.choose (List.filter isOdd board)
+shuffleCandinate : Candinates -> Generator Candinates
+shuffleCandinate candinate =
+    Random.List.shuffle candinate
 
 
 isOdd : Point -> Bool
@@ -99,11 +117,9 @@ isOdd point =
     modBy2 point.coordinate.x == 1 && modBy2 point.coordinate.y == 1
 
 
-type Direction
-    = UP
-    | DOWN
-    | RIGHT
-    | LEFT
+initializeCandinate : Board -> Candinates
+initializeCandinate board =
+    List.filter (\p -> isOdd p) board
 
 
 chooseDirection : Generator Direction
@@ -111,89 +127,124 @@ chooseDirection =
     Random.uniform UP [ DOWN, RIGHT, LEFT ]
 
 
+chooseDirections : Int -> Generator (List Direction)
+chooseDirections maxOfCoordinate =
+    Random.list ((maxOfCoordinate ^ 2) * 2) chooseDirection
+
+
 
 -- UPDATE
 
 
 type Msg
-    = ChoosePoint ( Maybe Point, List Point )
-    | ChooseDirection Direction
+    = ShuffleCandinate Candinates
+    | ChooseDirections (List Direction)
     | GeneratingMaze
-    | FinishedGenerateMaze
+    | FinishedGeneratingMaze
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        ChoosePoint ( Just point, _ ) ->
-            case diggingThePointToDig model.board point.coordinate of
-                Just board ->
-                    ( { model | board = board, pointToDig = Coordinate point.coordinate.x point.coordinate.y }
-                    , Random.generate ChooseDirection chooseDirection
-                    )
+        ShuffleCandinate candinates ->
+            ( { model | candinates = candinates }
+            , Random.generate ChooseDirections (chooseDirections model.maxOfCoordinate)
+            )
 
-                Nothing ->
-                    ( model, Random.generate ChoosePoint (choosePoint model.board) )
-
-        ChoosePoint ( Nothing, _ ) ->
-            update FinishedGenerateMaze model
-
-        ChooseDirection direction ->
-            update GeneratingMaze { model | directionToDig = direction }
+        ChooseDirections directions ->
+            update GeneratingMaze { model | directions = directions }
 
         GeneratingMaze ->
-            generateMaze model
+            update FinishedGeneratingMaze (generateMaze model)
 
-        FinishedGenerateMaze ->
-            ( model, Cmd.none )
-
-
-diggingThePointToDig : Board -> Coordinate -> Maybe Board
-diggingThePointToDig board coordinate =
-    ListE.findIndex ((\c p -> c == p.coordinate) coordinate) board
-        |> Maybe.andThen (\idx -> Just (ListE.updateAt idx (\p -> { p | pointStatus = Road }) board))
+        FinishedGeneratingMaze ->
+            ( { model | board = makeWall model.maxOfCoordinate model.board }, Cmd.none )
 
 
-diggingSpecifiedDirection : Board -> Coordinate -> Coordinate -> Maybe Board
-diggingSpecifiedDirection board c2 c1 =
+makeWall : Int -> Board -> Board
+makeWall numOfPint board =
+    List.map
+        (\p ->
+            if isPerimeter numOfPint p.coordinate.x p.coordinate.y then
+                { p | pointStatus = Wall }
+
+            else
+                p
+        )
+        board
+
+
+generateMaze : Model -> Model
+generateMaze model =
+    let
+        direction =
+            Maybe.withDefault UP (List.head model.directions)
+
+        newDirections =
+            case model.directions of
+                d :: ds ->
+                    ds ++ [ d ]
+
+                _ ->
+                    model.directions
+    in
+    case model.candinates of
+        [] ->
+            model
+
+        point :: points ->
+            let
+                ( c2, c1 ) =
+                    case direction of
+                        UP ->
+                            ( Coordinate point.coordinate.x (point.coordinate.y + 2)
+                            , Coordinate point.coordinate.x (point.coordinate.y + 1)
+                            )
+
+                        DOWN ->
+                            ( Coordinate point.coordinate.x (point.coordinate.y - 2)
+                            , Coordinate point.coordinate.x (point.coordinate.y - 1)
+                            )
+
+                        RIGHT ->
+                            ( Coordinate (point.coordinate.x + 2) point.coordinate.y
+                            , Coordinate (point.coordinate.x + 1) point.coordinate.y
+                            )
+
+                        LEFT ->
+                            ( Coordinate (point.coordinate.x - 2) point.coordinate.y
+                            , Coordinate (point.coordinate.x - 1) point.coordinate.y
+                            )
+            in
+            case diggingSpecifiedDirection point.coordinate c1 c2 model.board of
+                Just board ->
+                    let
+                        nextCandinates =
+                            Maybe.withDefault point (ListE.find (\p -> p.coordinate == c2) model.candinates)
+                                |> (\p -> ( p, ListE.remove p model.candinates ))
+                                |> (\( p, ps ) -> p :: ps)
+                    in
+                    generateMaze { model | board = board, candinates = nextCandinates, directions = newDirections }
+
+                Nothing ->
+                    let
+                        newPoint =
+                            { point | possibleDirections = ListE.remove direction point.possibleDirections }
+                    in
+                    if List.isEmpty newPoint.possibleDirections then
+                        generateMaze { model | candinates = points, directions = newDirections }
+
+                    else
+                        generateMaze { model | candinates = newPoint :: points, directions = newDirections }
+
+
+diggingSpecifiedDirection : Coordinate -> Coordinate -> Coordinate -> Board -> Maybe Board
+diggingSpecifiedDirection c0 c1 c2 board =
     if List.any (\p -> c2 == p.coordinate && p.pointStatus == Wall) board then
-        Just (ListE.updateIf (\p -> c2 == p.coordinate || c1 == p.coordinate && p.pointStatus == Wall) (\p -> { p | pointStatus = Road }) board)
+        Just (ListE.updateIf (\p -> c0 == p.coordinate || c2 == p.coordinate || c1 == p.coordinate && p.pointStatus == Wall) (\p -> { p | pointStatus = Road }) board)
 
     else
         Nothing
-
-
-generateMaze : Model -> ( Model, Cmd Msg )
-generateMaze model =
-    let
-        ( c2, c1 ) =
-            case model.directionToDig of
-                UP ->
-                    ( Coordinate model.pointToDig.x (model.pointToDig.y + 2)
-                    , Coordinate model.pointToDig.x (model.pointToDig.y + 1)
-                    )
-
-                DOWN ->
-                    ( Coordinate model.pointToDig.x (model.pointToDig.y - 2)
-                    , Coordinate model.pointToDig.x (model.pointToDig.y - 1)
-                    )
-
-                RIGHT ->
-                    ( Coordinate (model.pointToDig.x + 2) model.pointToDig.y
-                    , Coordinate (model.pointToDig.x + 1) model.pointToDig.y
-                    )
-
-                LEFT ->
-                    ( Coordinate (model.pointToDig.x - 2) model.pointToDig.y
-                    , Coordinate (model.pointToDig.x - 1) model.pointToDig.y
-                    )
-    in
-    case diggingSpecifiedDirection model.board c2 c1 of
-        Just board ->
-            ( { model | board = board, pointToDig = c2 }, Random.generate ChooseDirection chooseDirection )
-
-        Nothing ->
-            ( model, Random.generate ChoosePoint (choosePoint model.board) )
 
 
 
@@ -211,4 +262,15 @@ subscriptions model =
 
 view : Model -> Html Msg
 view model =
-    text "game"
+    div [ class "container" ]
+        (List.map
+            (\p ->
+                case p.pointStatus of
+                    Wall ->
+                        div [] [ text "■" ]
+
+                    Road ->
+                        div [] [ text "□" ]
+            )
+            model.board
+        )
