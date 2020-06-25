@@ -3,6 +3,7 @@ module Main exposing (Model, Msg, init, main, subscriptions, update, view)
 import Browser
 import Browser.Navigation as Nav
 import Html exposing (..)
+import Html.Attributes exposing (..)
 import Page.Game
 import Page.Top
 import Router exposing (urlToRoute)
@@ -141,7 +142,7 @@ view : Model -> Browser.Document Msg
 view model =
     { title = "Application Title"
     , body =
-        [ div [] [ text "New Application" ]
+        [ div [ class "game_title" ] [ text "forest maze" ]
         , case model.page of
             NotFound ->
                 pageNotFoudView

@@ -1,5 +1,21 @@
+.game_title {
+    text-align: center;
+}
 .container {
+    font-family: emoji;
+    width: 868px;
+    height: 868px;
     display: grid;
-    grid-template-columns: 14px 14px 14px 14px 14px 14px 14px 14px 14px 14px 14px 14px 14px 14px 14px 14px 14px 14px 14px 14px 14px 14px 14px 14px 14px 14px 14px 14px 14px 14px 14px 14px 14px 14px 14px 14px 14px 14px 14px 14px 14px;
-    grid-template-rows: 14px 14px 14px 14px 14px 14px 14px 14px 14px 14px 14px 14px 14px 14px 14px 14px 14px 14px 14px 14px 14px 14px 14px 14px 14px 14px 14px 14px 14px 14px 14px 14px 14px 14px 14px 14px 14px 14px 14px 14px 14px;
+    font-size: 24px;
+    margin: auto;
+    grid-template-columns: repeat(31, 28px);
+    grid-template-rows: repeat(31, 28px);
+}
+.wall {
+    text-align: center;
+    background-color: sienna;
+}
+.road {
+    text-align: center;
+    background-color: sienna;
 }

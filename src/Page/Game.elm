@@ -60,12 +60,12 @@ init : ( Model, Cmd Msg )
 init =
     let
         newBoard =
-            initializeBoard 40
+            initializeBoard 30
 
         candinates =
             initializeCandinate newBoard
     in
-    ( Model newBoard [] candinates 40
+    ( Model newBoard [] candinates 30
     , Random.generate ChooseCandinate (chooseCandinate candinates)
     )
 
@@ -271,10 +271,10 @@ view model =
             (\p ->
                 case p.pointStatus of
                     Wall ->
-                        div [] [ text "■" ]
+                        div [ class "wall" ] [ text "🌲" ]
 
                     Road ->
-                        div [] [ text "□" ]
+                        div [ class "road" ] [ text "🕸️" ]
             )
             model.board
         )
