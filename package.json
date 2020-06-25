@@ -6,7 +6,7 @@
   "scripts": {
     "test": "elm-analyse && elm-format --validate src/",
     "format": "elm-format src --yes",
-    "dev": "npm run format && parcel src/index.html",
+    "start": "npm run format && parcel src/index.html",
     "build": "npm run format && parcel build src/index.html"
   },
   "dependencies": {
