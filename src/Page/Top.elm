@@ -44,5 +44,4 @@ subscriptions model =
 view : Model -> Html Msg
 view model =
     a [ attribute "href" "/game" ]
-        [ text "Start game"
-        ]
+        [ text "Start game" ]
