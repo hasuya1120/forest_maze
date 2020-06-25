@@ -5,7 +5,9 @@
 ## Rule
 
 1. Starting point is 🏝️ and goal point is 🏕️.
-1. Move from starting point to goal point as quickly as possible. (I plan to implement time measurement.)
+1. You control character to move from starting point to goal point as quickly as possible. 
+    - Characters operated by the user are not displayed yet and cannot be moved
+    - I plan to implement time measurement.
 
 ## Development environment setup
 

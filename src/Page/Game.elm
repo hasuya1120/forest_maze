@@ -1,7 +1,5 @@
 module Page.Game exposing (Model, Msg, init, subscriptions, update, view)
 
--- Write the end condition for maze generation
-
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import List.Extra as ListE
