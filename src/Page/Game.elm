@@ -274,7 +274,7 @@ view model =
                         div [ class "wall" ] [ text "🌲" ]
 
                     Road ->
-                        div [ class "road" ] [ text "🕸️" ]
+                        div [ class "road" ] [ text "☘️" ]
             )
             model.board
         )
