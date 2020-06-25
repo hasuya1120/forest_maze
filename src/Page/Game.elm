@@ -13,7 +13,7 @@ import Url exposing (toString)
 type alias Model =
     { board : Board
     , directions : List Direction
-    , candinates : Candinates
+    , candidates : Candidates
     , maxOfCoordinate : Int
     }
 
@@ -22,7 +22,7 @@ type alias Board =
     List Point
 
 
-type alias Candinates =
+type alias Candidates =
     List Point
 
 
@@ -62,11 +62,11 @@ init =
         newBoard =
             initializeBoard 40
 
-        candinates =
-            initializeCandinate newBoard
+        candidates =
+            initializeCandidate newBoard
     in
-    ( Model newBoard [] candinates 40
-    , Random.generate ChooseCandinate (chooseCandinate candinates)
+    ( Model newBoard [] candidates 40
+    , Random.generate ChooseCandidate (chooseCandidate candidates)
     )
 
 
@@ -112,14 +112,14 @@ isOdd point =
     modBy2 point.coordinate.x == 1 && modBy2 point.coordinate.y == 1
 
 
-initializeCandinate : Board -> Candinates
-initializeCandinate board =
+initializeCandidate : Board -> Candidates
+initializeCandidate board =
     List.filter (\p -> isOdd p) board
 
 
-chooseCandinate : Candinates -> Generator ( Maybe Point, List Point )
-chooseCandinate candinate =
-    Random.List.choose candinate
+chooseCandidate : Candidates -> Generator ( Maybe Point, List Point )
+chooseCandidate candidate =
+    Random.List.choose candidate
 
 
 chooseDirection : Generator Direction
@@ -137,7 +137,7 @@ chooseDirections maxOfCoordinate =
 
 
 type Msg
-    = ChooseCandinate ( Maybe Point, List Point )
+    = ChooseCandidate ( Maybe Point, List Point )
     | ChooseDirections (List Direction)
     | GeneratingMaze
     | FinishedGeneratingMaze
@@ -146,13 +146,13 @@ type Msg
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        ChooseCandinate ( Just candinate, _ ) ->
-            ( { model | candinates = [ candinate ] }
+        ChooseCandidate ( Just candidate, _ ) ->
+            ( { model | candidates = [ candidate ] }
             , Random.generate ChooseDirections (chooseDirections model.maxOfCoordinate)
             )
 
-        ChooseCandinate ( Nothing, _ ) ->
-            ( { model | candinates = [] }
+        ChooseCandidate ( Nothing, _ ) ->
+            ( { model | candidates = [] }
             , Random.generate ChooseDirections (chooseDirections model.maxOfCoordinate)
             )
 
@@ -193,7 +193,7 @@ generateMaze model =
                 _ ->
                     model.directions
     in
-    case model.candinates of
+    case model.candidates of
         [] ->
             model
 
@@ -224,11 +224,11 @@ generateMaze model =
             case diggingSpecifiedDirection point.coordinate c1 c2 model.board of
                 Just board ->
                     let
-                        nextCandinates =
+                        nextCandidates =
                             Maybe.withDefault point (ListE.find (\p -> p.coordinate == c2) model.board)
-                                |> (\p -> p :: model.candinates)
+                                |> (\p -> p :: model.candidates)
                     in
-                    generateMaze { model | board = board, candinates = nextCandinates, directions = newDirections }
+                    generateMaze { model | board = board, candidates = nextCandidates, directions = newDirections }
 
                 Nothing ->
                     let
@@ -236,10 +236,10 @@ generateMaze model =
                             { point | possibleDirections = ListE.remove direction point.possibleDirections }
                     in
                     if List.isEmpty newPoint.possibleDirections then
-                        generateMaze { model | candinates = points, directions = newDirections }
+                        generateMaze { model | candidates = points, directions = newDirections }
 
                     else
-                        generateMaze { model | candinates = newPoint :: points, directions = newDirections }
+                        generateMaze { model | candidates = newPoint :: points, directions = newDirections }
 
 
 diggingSpecifiedDirection : Coordinate -> Coordinate -> Coordinate -> Board -> Maybe Board
