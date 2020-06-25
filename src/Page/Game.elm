@@ -15,6 +15,8 @@ type alias Model =
     , directions : List Direction
     , candidates : Candidates
     , maxOfCoordinate : Int
+    , startPoint : Coordinate
+    , goalPoint : Coordinate
     }
 
 
@@ -65,7 +67,7 @@ init =
         candidates =
             initializeCandidate newBoard
     in
-    ( Model newBoard [] candidates 30
+    ( Model newBoard [] candidates 30 (Coordinate 0 0) (Coordinate 0 0)
     , Random.generate ChooseCandidate (chooseCandidate candidates)
     )
 
@@ -118,8 +120,13 @@ initializeCandidate board =
 
 
 chooseCandidate : Candidates -> Generator ( Maybe Point, List Point )
-chooseCandidate candidate =
-    Random.List.choose candidate
+chooseCandidate candidates =
+    Random.List.choose candidates
+
+
+chooseGoal : Candidates -> Generator ( Maybe Point, List Point )
+chooseGoal candidates =
+    chooseCandidate candidates
 
 
 chooseDirection : Generator Direction
@@ -140,6 +147,7 @@ type Msg
     = ChooseCandidate ( Maybe Point, List Point )
     | ChooseDirections (List Direction)
     | GeneratingMaze
+    | ChooseGoal ( Maybe Point, List Point )
     | FinishedGeneratingMaze
 
 
@@ -147,7 +155,7 @@ update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         ChooseCandidate ( Just candidate, _ ) ->
-            ( { model | candidates = [ candidate ] }
+            ( { model | candidates = [ candidate ], startPoint = candidate.coordinate }
             , Random.generate ChooseDirections (chooseDirections model.maxOfCoordinate)
             )
 
@@ -163,7 +171,20 @@ update msg model =
             update FinishedGeneratingMaze (generateMaze model)
 
         FinishedGeneratingMaze ->
-            ( { model | board = makeWall model.maxOfCoordinate model.board }, Cmd.none )
+            ( { model | board = makeWall model.maxOfCoordinate model.board }
+            , Random.generate ChooseGoal (chooseGoal (listGoalCandidates model.startPoint model.board))
+            )
+
+        ChooseGoal ( Just candidate, _ ) ->
+            ( { model | goalPoint = candidate.coordinate }, Cmd.none )
+
+        ChooseGoal ( Nothing, _ ) ->
+            ( model, Cmd.none )
+
+
+listGoalCandidates : Coordinate -> Board -> Candidates
+listGoalCandidates startPoint board =
+    List.filter (\p -> (p.coordinate.x + 5) > startPoint.x && (p.coordinate.y + 5) > startPoint.y && p.pointStatus == Road) board
 
 
 makeWall : Int -> Board -> Board
@@ -269,12 +290,19 @@ view model =
     div [ class "container" ]
         (List.map
             (\p ->
-                case p.pointStatus of
-                    Wall ->
-                        div [ class "wall" ] [ text "🌲" ]
+                if p.coordinate == model.startPoint then
+                    div [ class "start_point" ] [ text "🏝️" ]
 
-                    Road ->
-                        div [ class "road" ] [ text "☘️" ]
+                else if p.coordinate == model.goalPoint then
+                    div [ class "goal_point" ] [ text "🏕️" ]
+
+                else
+                    case p.pointStatus of
+                        Wall ->
+                            div [ class "wall" ] [ text "🌲" ]
+
+                        Road ->
+                            div [ class "road" ] [ text "☘️" ]
             )
             model.board
         )
