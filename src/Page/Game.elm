@@ -169,8 +169,12 @@ update msg model =
             update FinishedGeneratingMaze (generateMaze model)
 
         FinishedGeneratingMaze ->
-            ( { model | board = makeWall model.maxOfCoordinate model.board }
-            , Random.generate ChooseGoal (chooseGoal (listGoalCandidates model.startPoint model.board))
+            let
+                newBoard =
+                    makeWall model.maxOfCoordinate model.board
+            in
+            ( { model | board = newBoard }
+            , Random.generate ChooseGoal (chooseGoal (listGoalCandidates model.startPoint newBoard))
             )
 
         ChooseGoal ( Just candidate, _ ) ->
@@ -182,7 +186,13 @@ update msg model =
 
 listGoalCandidates : Coordinate -> Board -> Candidates
 listGoalCandidates startPoint board =
-    List.filter (\p -> (p.coordinate.x + 5) > startPoint.x && (p.coordinate.y + 5) > startPoint.y && p.pointStatus == Road) board
+    List.filter (\p -> isCoordinateMoreThan5PointAway startPoint p.coordinate && p.pointStatus == Road) board
+
+
+isCoordinateMoreThan5PointAway : Coordinate -> Coordinate -> Bool
+isCoordinateMoreThan5PointAway startPoint point =
+    ((startPoint.x + 5) < point.x && (startPoint.y + 5) < point.y)
+        || ((startPoint.x - 5) > point.x && (startPoint.y - 5) > point.y)
 
 
 makeWall : Int -> Board -> Board
