@@ -1,6 +1,7 @@
 module Page.Top exposing (Model, Msg, init, subscriptions, update, view)
 
 import Html exposing (..)
+import Html.Attributes exposing (attribute)
 
 
 type alias Model =
@@ -42,4 +43,7 @@ subscriptions model =
 
 view : Model -> Html Msg
 view model =
-    text "top"
+    a [ attribute "href" "/game"]
+      [
+        text "Start game"
+      ]
