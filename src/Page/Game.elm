@@ -191,7 +191,7 @@ listGoalCandidates startPoint board =
 
 isCoordinateMoreThan5PointAway : Coordinate -> Coordinate -> Bool
 isCoordinateMoreThan5PointAway startPoint point =
-    (abs (point.x - startPoint.x) > 5) && (abs (point.y - startPoint.y) > 5)
+    abs (point.x - startPoint.x) > 5 && abs (point.y - startPoint.y) > 5
 
 
 makeWall : Int -> Board -> Board
