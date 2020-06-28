@@ -4,10 +4,11 @@
 
 ## Rule
 
-1. Starting point is 🏝️ and goal point is 🏕️.
-1. You control character to move from starting point to goal point as quickly as possible. 
-    - Characters operated by the user are not displayed yet and cannot be moved
-    - I plan to implement time measurement.
+1. Starting point is 🏝️, goal point is 🏕️ and character is 🐾.
+1. Road is ☘️, so you can walk on ☘️.
+1. 🌲is wall, so you Cannot walk on 🌲.
+1. You control character with `wasd` key to move from starting point to goal point as quickly as possible. 
+    - The elapsed time is displayed on the right side of the screen
 
 ## Development environment setup
 
