@@ -1,15 +1,23 @@
 .game_title {
     text-align: center;
 }
+.game_board {
+    display: flex;
+    justify-content: center;
+}
+.container:before {
+    padding-top: 100%;
+}
 .container {
     font-family: emoji;
-    width: 868px;
-    height: 868px;
     display: grid;
-    font-size: 24px;
-    margin: auto;
-    grid-template-columns: repeat(31, 28px);
-    grid-template-rows: repeat(31, 28px);
+    font-size: 100%;
+    grid-template-columns: repeat(31, 20px);
+    grid-template-rows: repeat(31, 20px);
+}
+.menu {
+    text-align: center;
+    width: 200px;
 }
 .wall {
     text-align: center;
@@ -24,6 +32,10 @@
     background-color: mediumseagreen;
 }
 .goal_point {
+    text-align: center;
+    background-color: mediumseagreen;
+}
+.character_point {
     text-align: center;
     background-color: mediumseagreen;
 }

@@ -1,24 +1,35 @@
 module Page.Game exposing (Model, Msg, init, subscriptions, update, view)
 
+import Browser.Events
 import Html exposing (..)
 import Html.Attributes exposing (..)
+import Json.Decode as Decode
 import List.Extra as ListE
 import Random exposing (Generator)
 import Random.List
-import Url exposing (toString)
+import Task
+import Time
 
 
 type alias Model =
     { board : Board
     , directions : List Direction
     , candidates : Candidates
-    , maxOfCoordinate : Int
-    , startPoint : Coordinate
-    , goalPoint : Coordinate
+    , characterPoint : CharacterPoint
+    , startTime : Int
+    , elapsedTime : Int
     }
 
 
 type alias Board =
+    { points : BoardPoints
+    , startCoordinate : Coordinate
+    , goalCoordinate : Coordinate
+    , maxOfCoordinate : Int
+    }
+
+
+type alias BoardPoints =
     List Point
 
 
@@ -49,6 +60,13 @@ type Direction
     | DOWN
     | RIGHT
     | LEFT
+    | STAY
+
+
+type alias CharacterPoint =
+    { coordinate : Coordinate
+    , isGoalPoint : Bool
+    }
 
 
 allDirections : List Direction
@@ -59,14 +77,20 @@ allDirections =
 init : ( Model, Cmd Msg )
 init =
     let
+        defaultCoordinate =
+            Coordinate 1 1
+
         newBoard =
             initializeBoard 30
 
         candidates =
-            initializeCandidate newBoard
+            initializeCandidate newBoard.points
+
+        defaultTime =
+            Time.posixToMillis (Time.millisToPosix 0)
     in
-    ( Model newBoard [] candidates 30 (Coordinate 0 0) (Coordinate 0 0)
-    , Random.generate ChooseCandidate (chooseCandidate candidates)
+    ( Model newBoard [] candidates (CharacterPoint defaultCoordinate False) defaultTime defaultTime
+    , Cmd.batch [ Random.generate ChooseCandidate (chooseCandidate candidates), Task.perform StartTime Time.now ]
     )
 
 
@@ -76,12 +100,17 @@ init =
 
 initializeBoard : Int -> Board
 initializeBoard maxOfCoordinate =
-    maxOfCoordinate
-        |> List.range 0
-        |> initializePoints maxOfCoordinate
+    { points =
+        maxOfCoordinate
+            |> List.range 0
+            |> initializePoints maxOfCoordinate
+    , startCoordinate = Coordinate 1 1
+    , goalCoordinate = Coordinate 1 1
+    , maxOfCoordinate = maxOfCoordinate
+    }
 
 
-initializePoints : Int -> List Int -> Board
+initializePoints : Int -> List Int -> BoardPoints
 initializePoints maxOfCoordinate width =
     ListE.lift2 (initializePoint maxOfCoordinate) width width
 
@@ -112,9 +141,9 @@ isOdd point =
     modBy2 point.coordinate.x == 1 && modBy2 point.coordinate.y == 1
 
 
-initializeCandidate : Board -> Candidates
-initializeCandidate board =
-    List.filter (\p -> isOdd p) board
+initializeCandidate : BoardPoints -> Candidates
+initializeCandidate boardPoints =
+    List.filter (\p -> isOdd p) boardPoints
 
 
 chooseCandidate : Candidates -> Generator ( Maybe Point, List Point )
@@ -147,19 +176,40 @@ type Msg
     | GeneratingMaze
     | ChooseGoal ( Maybe Point, List Point )
     | FinishedGeneratingMaze
+    | KeyPressed Direction
+    | StartTime Time.Posix
+    | Tick Time.Posix
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
+    let
+        currentBoard =
+            model.board
+    in
     case msg of
+        StartTime startTime ->
+            ( { model | startTime = Time.posixToMillis startTime }, Cmd.none )
+
+        Tick now ->
+            ( { model | elapsedTime = Time.posixToMillis now - model.startTime }, Cmd.none )
+
         ChooseCandidate ( Just candidate, _ ) ->
-            ( { model | candidates = [ candidate ], startPoint = candidate.coordinate }
-            , Random.generate ChooseDirections (chooseDirections model.maxOfCoordinate)
+            let
+                newBoard =
+                    { currentBoard | startCoordinate = candidate.coordinate }
+            in
+            ( { model
+                | candidates = [ candidate ]
+                , board = newBoard
+                , characterPoint = CharacterPoint candidate.coordinate False
+              }
+            , Random.generate ChooseDirections (chooseDirections model.board.maxOfCoordinate)
             )
 
         ChooseCandidate ( Nothing, _ ) ->
             ( { model | candidates = [] }
-            , Random.generate ChooseDirections (chooseDirections model.maxOfCoordinate)
+            , Random.generate ChooseDirections (chooseDirections model.board.maxOfCoordinate)
             )
 
         ChooseDirections directions ->
@@ -171,31 +221,38 @@ update msg model =
         FinishedGeneratingMaze ->
             let
                 newBoard =
-                    makeWall model.maxOfCoordinate model.board
+                    { currentBoard | points = makeWall currentBoard.maxOfCoordinate currentBoard.points }
             in
             ( { model | board = newBoard }
-            , Random.generate ChooseGoal (chooseGoal (listGoalCandidates model.startPoint newBoard))
+            , Random.generate ChooseGoal (chooseGoal (listGoalCandidates model.board.startCoordinate newBoard.points))
             )
 
         ChooseGoal ( Just candidate, _ ) ->
-            ( { model | goalPoint = candidate.coordinate }, Cmd.none )
+            let
+                newBoard =
+                    { currentBoard | goalCoordinate = candidate.coordinate }
+            in
+            ( { model | board = newBoard }, Cmd.none )
 
-        ChooseGoal ( Nothing, _ ) ->
+        KeyPressed direction ->
+            ( { model | characterPoint = moveCharacter model.characterPoint direction model.board }, Cmd.none )
+
+        _ ->
             ( model, Cmd.none )
 
 
-listGoalCandidates : Coordinate -> Board -> Candidates
-listGoalCandidates startPoint board =
-    List.filter (\p -> isCoordinateMoreThan5PointAway startPoint p.coordinate && p.pointStatus == Road) board
+listGoalCandidates : Coordinate -> BoardPoints -> Candidates
+listGoalCandidates startCoordinate boardPoint =
+    List.filter (\p -> isCoordinateMoreThan10PointAway startCoordinate p.coordinate && p.pointStatus == Road) boardPoint
 
 
-isCoordinateMoreThan5PointAway : Coordinate -> Coordinate -> Bool
-isCoordinateMoreThan5PointAway startPoint point =
-    abs (point.x - startPoint.x) > 5 && abs (point.y - startPoint.y) > 5
+isCoordinateMoreThan10PointAway : Coordinate -> Coordinate -> Bool
+isCoordinateMoreThan10PointAway startCoordinate point =
+    abs (point.x - startCoordinate.x) > 10 && abs (point.y - startCoordinate.y) > 10
 
 
-makeWall : Int -> Board -> Board
-makeWall numOfPint board =
+makeWall : Int -> BoardPoints -> BoardPoints
+makeWall numOfPint boardPoints =
     List.map
         (\p ->
             if isPerimeter numOfPint p.coordinate.x p.coordinate.y then
@@ -204,7 +261,7 @@ makeWall numOfPint board =
             else
                 p
         )
-        board
+        boardPoints
 
 
 generateMaze : Model -> Model
@@ -248,15 +305,24 @@ generateMaze model =
                             ( Coordinate (point.coordinate.x - 2) point.coordinate.y
                             , Coordinate (point.coordinate.x - 1) point.coordinate.y
                             )
+
+                        _ ->
+                            ( point.coordinate, point.coordinate )
             in
             case diggingSpecifiedDirection point.coordinate c1 c2 model.board of
-                Just board ->
+                Just boardPoints ->
                     let
                         nextCandidates =
-                            Maybe.withDefault point (ListE.find (\p -> p.coordinate == c2) model.board)
+                            Maybe.withDefault point (ListE.find (\p -> p.coordinate == c2) model.board.points)
                                 |> (\p -> p :: model.candidates)
+
+                        currentBoard =
+                            model.board
+
+                        newBoard =
+                            { currentBoard | points = boardPoints }
                     in
-                    generateMaze { model | board = board, candidates = nextCandidates, directions = newDirections }
+                    generateMaze { model | board = newBoard, candidates = nextCandidates, directions = newDirections }
 
                 Nothing ->
                     let
@@ -270,22 +336,98 @@ generateMaze model =
                         generateMaze { model | candidates = newPoint :: points, directions = newDirections }
 
 
-diggingSpecifiedDirection : Coordinate -> Coordinate -> Coordinate -> Board -> Maybe Board
+diggingSpecifiedDirection : Coordinate -> Coordinate -> Coordinate -> Board -> Maybe BoardPoints
 diggingSpecifiedDirection c0 c1 c2 board =
-    if List.any (\p -> c2 == p.coordinate && p.pointStatus == Wall) board then
-        Just (ListE.updateIf (\p -> c0 == p.coordinate || c2 == p.coordinate || c1 == p.coordinate && p.pointStatus == Wall) (\p -> { p | pointStatus = Road }) board)
+    if List.any (\p -> c2 == p.coordinate && p.pointStatus == Wall) board.points then
+        Just (ListE.updateIf (\p -> c0 == p.coordinate || c2 == p.coordinate || c1 == p.coordinate && p.pointStatus == Wall) (\p -> { p | pointStatus = Road }) board.points)
 
     else
         Nothing
+
+
+moveCharacter : CharacterPoint -> Direction -> Board -> CharacterPoint
+moveCharacter characterPoint direction board =
+    let
+        nextPointCoordinate =
+            case direction of
+                UP ->
+                    Coordinate characterPoint.coordinate.x (characterPoint.coordinate.y - 1)
+
+                DOWN ->
+                    Coordinate characterPoint.coordinate.x (characterPoint.coordinate.y + 1)
+
+                RIGHT ->
+                    Coordinate (characterPoint.coordinate.x + 1) characterPoint.coordinate.y
+
+                LEFT ->
+                    Coordinate (characterPoint.coordinate.x - 1) characterPoint.coordinate.y
+
+                _ ->
+                    characterPoint.coordinate
+    in
+    case ListE.find (\p -> p.coordinate == nextPointCoordinate && p.pointStatus == Road) board.points of
+        Just _ ->
+            if nextPointCoordinate == board.goalCoordinate then
+                { characterPoint | coordinate = nextPointCoordinate, isGoalPoint = True }
+
+            else
+                { characterPoint | coordinate = nextPointCoordinate }
+
+        Nothing ->
+            characterPoint
 
 
 
 -- SUBSCRIPTION
 
 
+keyDecoder : Decode.Decoder Msg
+keyDecoder =
+    Decode.map toDirection (Decode.field "key" Decode.string)
+
+
+toDirection : String -> Msg
+toDirection key =
+    case key of
+        "ArrowLeft" ->
+            KeyPressed LEFT
+
+        "ArrowRight" ->
+            KeyPressed RIGHT
+
+        "ArrowUp" ->
+            KeyPressed UP
+
+        "ArrowDown" ->
+            KeyPressed DOWN
+
+        "a" ->
+            KeyPressed LEFT
+
+        "d" ->
+            KeyPressed RIGHT
+
+        "w" ->
+            KeyPressed UP
+
+        "s" ->
+            KeyPressed DOWN
+
+        _ ->
+            KeyPressed STAY
+
+
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    Sub.none
+    Sub.batch
+        (if model.characterPoint.isGoalPoint then
+            [ Sub.none ]
+
+         else
+            [ Time.every 100 Tick
+            , Browser.Events.onKeyPress keyDecoder
+            ]
+        )
 
 
 
@@ -294,22 +436,32 @@ subscriptions model =
 
 view : Model -> Html Msg
 view model =
-    div [ class "container" ]
-        (List.map
-            (\p ->
-                if p.coordinate == model.startPoint then
-                    div [ class "start_point" ] [ text "🏝️" ]
+    div [ class "game_board" ]
+        [ div [ class "container" ]
+            (List.map
+                (\p ->
+                    if p.coordinate == model.characterPoint.coordinate then
+                        div [ class "character_point" ] [ text "🐾" ]
 
-                else if p.coordinate == model.goalPoint then
-                    div [ class "goal_point" ] [ text "🏕️" ]
+                    else if p.coordinate == model.board.startCoordinate then
+                        div [ class "start_point" ] [ text "🏝️" ]
 
-                else
-                    case p.pointStatus of
-                        Wall ->
-                            div [ class "wall" ] [ text "🌲" ]
+                    else if p.coordinate == model.board.goalCoordinate then
+                        div [ class "goal_point" ] [ text "🏕️" ]
 
-                        Road ->
-                            div [ class "road" ] [ text "☘️" ]
+                    else
+                        case p.pointStatus of
+                            Wall ->
+                                div [ class "wall" ] [ text "🌲" ]
+
+                            Road ->
+                                div [ class "road" ] [ text "☘️" ]
+                )
+                model.board.points
             )
-            model.board
-        )
+        , if model.characterPoint.isGoalPoint then
+            div [ class "menu" ] [ text "goal!", text (String.concat [ "goal time: ", String.fromInt model.elapsedTime, "ms" ]) ]
+
+          else
+            div [ class "menu" ] [ text (String.concat [ "elapsed time: ", String.fromInt model.elapsedTime, "ms" ]) ]
+        ]
