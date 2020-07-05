@@ -1,6 +1,7 @@
 # forest_maze
 
 - forest_maze is an automatically generated maze.
+- This game was created for [Elm Game Jam #4](https://itch.io/jam/elm-game-jam-4)
 
 ## Rule
 
