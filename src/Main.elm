@@ -254,12 +254,12 @@ update msg model =
 
 listGoalCandidates : Coordinate -> BoardPoints -> Candidates
 listGoalCandidates startCoordinate boardPoint =
-    List.filter (\p -> isCoordinateMoreThan10PointAway startCoordinate p.coordinate && p.pointStatus == Road) boardPoint
+    List.filter (\p -> isCoordinateMoreThan10PointsAway startCoordinate p.coordinate && p.pointStatus == Road) boardPoint
 
 
-isCoordinateMoreThan10PointAway : Coordinate -> Coordinate -> Bool
-isCoordinateMoreThan10PointAway startCoordinate point =
-    abs (point.x - startCoordinate.x) > 10 && abs (point.y - startCoordinate.y) > 10
+isCoordinateMoreThan10PointsAway : Coordinate -> Coordinate -> Bool
+isCoordinateMoreThan10PointsAway coordinate1 coordinate2 =
+    abs (coordinate2.x - coordinate1.x) > 10 && abs (coordinate2.y - coordinate1.y) > 10
 
 
 makeWall : Int -> BoardPoints -> BoardPoints
@@ -400,18 +400,6 @@ keyDecoder =
 toDirection : String -> Msg
 toDirection key =
     case key of
-        "ArrowLeft" ->
-            KeyPressed LEFT
-
-        "ArrowRight" ->
-            KeyPressed RIGHT
-
-        "ArrowUp" ->
-            KeyPressed UP
-
-        "ArrowDown" ->
-            KeyPressed DOWN
-
         "a" ->
             KeyPressed LEFT
 
@@ -445,28 +433,22 @@ subscriptions model =
 -- VIEW
 
 
+isCoordinateWithin1Point : Coordinate -> Coordinate -> Bool
+isCoordinateWithin1Point coordinate1 coordinate2 =
+    abs (coordinate2.x - coordinate1.x) <= 1 && abs (coordinate2.y - coordinate1.y) <= 1
+
+
 view : Model -> Html Msg
 view model =
     div [ class "game_board" ]
         [ div [ class "container" ]
             (List.map
                 (\p ->
-                    if p.coordinate == model.characterPoint.coordinate then
-                        div [ class "character_point" ] [ text "🐾" ]
-
-                    else if p.coordinate == model.board.startCoordinate then
-                        div [ class "start_point" ] [ text "🏝️" ]
-
-                    else if p.coordinate == model.board.goalCoordinate then
-                        div [ class "goal_point" ] [ text "🏕️" ]
+                    if model.characterPoint.isGoalPoint || isCoordinateWithin1Point p.coordinate model.characterPoint.coordinate then
+                        viewPointWithin1PointWithCharacter p model
 
                     else
-                        case p.pointStatus of
-                            Wall ->
-                                div [ class "wall" ] [ text "🌲" ]
-
-                            Road ->
-                                div [ class "road" ] [ text "☘️" ]
+                        div [ class "hidden_point" ] [ text "" ]
                 )
                 model.board.points
             )
@@ -476,3 +458,23 @@ view model =
           else
             div [ class "menu" ] [ text (String.concat [ "elapsed time: ", String.fromInt model.elapsedTime, "ms" ]) ]
         ]
+
+
+viewPointWithin1PointWithCharacter : Point -> Model -> Html Msg
+viewPointWithin1PointWithCharacter point model =
+    if point.coordinate == model.characterPoint.coordinate then
+        div [ class "character_point" ] [ text "🐾" ]
+
+    else if point.coordinate == model.board.startCoordinate then
+        div [ class "start_point" ] [ text "🏝️" ]
+
+    else if point.coordinate == model.board.goalCoordinate then
+        div [ class "goal_point" ] [ text "🏕️" ]
+
+    else
+        case point.pointStatus of
+            Wall ->
+                div [ class "wall" ] [ text "🌲" ]
+
+            Road ->
+                div [ class "road" ] [ text "☘️" ]
