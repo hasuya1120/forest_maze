@@ -1,17 +1,10 @@
-.game_title {
-    text-align: center;
-}
 .game_board {
     display: flex;
     justify-content: center;
 }
-.container:before {
-    padding-top: 100%;
-}
 .container {
     font-family: emoji;
     display: grid;
-    font-size: 100%;
     grid-template-columns: repeat(31, 20px);
     grid-template-rows: repeat(31, 20px);
 }
