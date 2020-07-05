@@ -7,7 +7,7 @@
     "test": "elm-analyse && elm-format --validate src/",
     "format": "elm-format src --yes",
     "start": "npm run format && parcel src/index.html",
-    "build": "npm run format && parcel build src/index.html"
+    "build": "npm run format && parcel build src/index.html --public-url ./"
   },
   "dependencies": {
     "elm": "^0.19.1-3",
