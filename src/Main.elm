@@ -203,7 +203,7 @@ update msg model =
             ( { model | startTime = Time.posixToMillis startTime }, Cmd.none )
 
         Tick now ->
-            ( { model | elapsedTime = Time.posixToMillis now - model.startTime }, Cmd.none )
+            ( { model | elapsedTime = (Time.posixToMillis now - model.startTime) // 1000 }, Cmd.none )
 
         ChooseCandidate ( Just candidate, _ ) ->
             let
@@ -423,7 +423,7 @@ subscriptions model =
             [ Sub.none ]
 
          else
-            [ Time.every 100 Tick
+            [ Time.every 1000 Tick
             , Browser.Events.onKeyPress keyDecoder
             ]
         )
@@ -456,11 +456,11 @@ view model =
             div [ class "menu" ]
                 [ text "goal!"
                 , br [] []
-                , text (String.concat [ "goal time: ", String.fromInt model.elapsedTime, "ms" ])
+                , text (String.concat [ "goal time: ", String.fromInt model.elapsedTime, "s" ])
                 ]
 
           else
-            div [ class "menu" ] [ text (String.concat [ "elapsed time: ", String.fromInt model.elapsedTime, "ms" ]) ]
+            div [ class "menu" ] [ text (String.concat [ "elapsed time: ", String.fromInt model.elapsedTime, "s" ]) ]
         ]
 
 
