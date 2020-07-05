@@ -453,7 +453,11 @@ view model =
                 model.board.points
             )
         , if model.characterPoint.isGoalPoint then
-            div [ class "menu" ] [ text "goal!", text (String.concat [ "goal time: ", String.fromInt model.elapsedTime, "ms" ]) ]
+            div [ class "menu" ]
+                [ text "goal!"
+                , br [] []
+                , text (String.concat [ "goal time: ", String.fromInt model.elapsedTime, "ms" ])
+                ]
 
           else
             div [ class "menu" ] [ text (String.concat [ "elapsed time: ", String.fromInt model.elapsedTime, "ms" ]) ]
