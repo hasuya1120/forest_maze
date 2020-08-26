@@ -15,7 +15,7 @@
     "elm-format": "^0.8.3",
     "elm-test": "^0.19.1-revision2",
     "parcel": "^1.12.4",
-    "sass": "^1.26.8"
+    "sass": "^1.26.10"
   },
   "repository": {
     "type": "git",
@@ -28,6 +28,6 @@
   },
   "homepage": "https://github.com/hasuya1120/forest_maze#readme",
   "devDependencies": {
-    "elm-hot": "^1.1.4"
+    "elm-hot": "^1.1.5"
   }
 }
